@@ -47,27 +47,37 @@ void r_colors(int c1,int c2,int c3,int rcolors[][3],int size){
       r+=5;
     }
 
-    gfx_color(rcolors[r][0],rcolors[r][1],rcolors[r][2]);
+    // Display vertical and horizontal guide-lines; highlights where v-bands have been added
+    /*gfx_color(rcolors[r][0],rcolors[r][1],rcolors[r][2]);
     gfx_line(size,size-r,size,size-r);
-    gfx_line(size+r,size,size+r,size);
+    gfx_line(size+r,size,size+r,size);*/
   }
 
   for(;r<size-10;r++){  // white space
-    rcolors[r][0] = rcolors[r][1] = rcolors[r][2] = 245;
-    gfx_color(245,245,245);
-    gfx_line(size,size-r,size,size-r);
-    gfx_line(size+r,size,size+r,size);
+    rcolors[r][0] = rcolors[r][1] = rcolors[r][2] = 255;
   }
 }
 
 void theta_colors(int rcolors[][3],int size){
-  int r,c1,c2,c3;
+  int r,c1,c2,c3,variance[1300][3],i=0,j,chanceofstreak;
   double theta;
-  for(r=50;r<size-100;r++){
+
+  chanceofstreak = rand()%20;
+  for(theta=0;theta<2*M_PI;theta+=.005){  // set variance for each angle
+    if(rand()%20 < chanceofstreak){
+      for(j=0;j<3;j++)
+	variance[i][j] = pow(-1,rand()%2)*(rand()%15);
+    }
+    else variance[i][0] = variance[i][1] = variance[i][2] = 0;
+    i++;
+  }
+
+  for(r=50;r<size-100;r++){  // color each ring with variance
+    i = 0;
     for(theta=0;theta<2*M_PI;theta+=.005){
-      c1=rcolors[r][0]+pow(-1,rand()%2)*(rand()%15);
-      c2=rcolors[r][1]+pow(-1,rand()%2)*(rand()%15);
-      c3=rcolors[r][2]+pow(-1,rand()%2)*(rand()%15);
+      c1=rcolors[r][0]+variance[i][0]+pow(-1,rand()%2)*(rand()%10);
+      c2=rcolors[r][1]+variance[i][1]+pow(-1,rand()%2)*(rand()%10);
+      c3=rcolors[r][2]+variance[i][2]+pow(-1,rand()%2)*(rand()%10);
       if(c1<0) c1=0;
       if(c1>255) c1=255;
       if(c2<0) c2=0;
@@ -76,15 +86,16 @@ void theta_colors(int rcolors[][3],int size){
       if(c3>255) c3=255;
       gfx_color(c1,c2,c3);
       gfx_line(size+r*cos(theta),size-r*sin(theta),size+r*cos(theta+.008),size-r*sin(theta+.008));
+      i++;
 
       if(gfx_event_waiting())
-      if(gfx_wait()=='q') return;
+	if(gfx_wait()=='q') return;
     }
   }
 
   for(;r<=size-10;r++){   // white space
     for(theta=0;theta<2*M_PI;theta+=.0025){
-      c1=245-rand()%15;
+      c1 = rcolors[r][0] - rand()%10;
       gfx_color(c1,c1,c1);
       gfx_line(size+r*cos(theta),size-r*sin(theta),size+r*cos(theta+.008),size-r*sin(theta+.008));
 
@@ -111,10 +122,14 @@ int main(void){
     scanf("%d,%d,%d",&c1,&c2,&c3);
 
   gfx_open(wsize,wsize,"Eye");
-  r_colors(c1,c2,c3,rcolors,wsize/2);
-  theta_colors(rcolors,wsize/2);
 
-  while(c!='q') c=gfx_wait();
+  do{
+    r_colors(c1,c2,c3,rcolors,wsize/2);
+    theta_colors(rcolors,wsize/2);
+
+    c=gfx_wait();
+    if(c!='r') gfx_clear();
+  }while(c!='q');
 
   return 0;
 }
