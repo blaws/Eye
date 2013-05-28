@@ -1,5 +1,5 @@
 Eye
-Benjamin Laws
+blaws
 
 Simple C-code that draws a random image of an eye starting from a given 
 RGB color value.
@@ -11,4 +11,4 @@ After drawing:
 	'r' to redraw on top of the first image.
 	Any other key to clear and redraw.
 
-Written on RedHat Linux. Make clean and make for other systems.
+Written on RedHat Linux.
