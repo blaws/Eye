@@ -59,12 +59,20 @@ void r_colors(int c1,int c2,int c3,int rcolors[][3],int size){
 }
 
 void theta_colors(int rcolors[][3],int size){
-  int r,c1,c2,c3,variance[1300][3],i=0,j,chanceofstreak;
+  int r,c1,c2,c3,brightness[1300],variance[1300][3],i=0,j=0,chanceofstreak;
   double theta;
 
-  chanceofstreak = rand()%20;
-  for(theta=0;theta<2*M_PI;theta+=.005){  // set variance for each angle
-    if(rand()%20 < chanceofstreak){
+  int sinamp = rand()%16 * pow(-1,rand()%2);
+  int sinshift = rand()%300;
+  for(theta=0;theta<2*M_PI;theta+=.005){  // set brightness for each angle, starting and ending with the same value
+    brightness[i] = sinamp*sin(i/200.0+sinshift);
+    i++;
+  }
+
+  chanceofstreak = rand()%15;
+  i = 0;
+  for(theta=0;theta<2*M_PI;theta+=.005){  // add streaks
+    if(rand()%15 < chanceofstreak){
       for(j=0;j<3;j++)
 	variance[i][j] = pow(-1,rand()%2)*(rand()%15);
     }
@@ -75,9 +83,9 @@ void theta_colors(int rcolors[][3],int size){
   for(r=50;r<size-100;r++){  // color each ring with variance
     i = 0;
     for(theta=0;theta<2*M_PI;theta+=.005){
-      c1=rcolors[r][0]+variance[i][0]+pow(-1,rand()%2)*(rand()%10);
-      c2=rcolors[r][1]+variance[i][1]+pow(-1,rand()%2)*(rand()%10);
-      c3=rcolors[r][2]+variance[i][2]+pow(-1,rand()%2)*(rand()%10);
+      c1=rcolors[r][0]+variance[i][0]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
+      c2=rcolors[r][1]+variance[i][1]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
+      c3=rcolors[r][2]+variance[i][2]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
       if(c1<0) c1=0;
       if(c1>255) c1=255;
       if(c2<0) c2=0;
