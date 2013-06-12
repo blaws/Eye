@@ -1,4 +1,4 @@
-// Benjamin Laws, eye.c
+// Blaws, eye.c
 
 #include <stdio.h>
 #include <math.h>
