@@ -1,7 +1,7 @@
 all: eye
 
-eye: eye.c gfx.c gfx.h
-	gcc eye.c gfx.c -o eye -lm -lX11
+eye: eye.c
+	gcc eye.c -o eye -framework GLUT -framework OpenGL
 
 clean:
-	rm -f eye
+	rm -f eye *~
