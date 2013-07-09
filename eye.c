@@ -1,4 +1,4 @@
-// blaws, Eye_mac.c
+// Blaws, eye.c
 
 #include <stdio.h>
 #include <math.h>
