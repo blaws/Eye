@@ -111,10 +111,36 @@ void theta_colors(int size){
     }
   }
 
+  int veins[2600] = {0};
   for(;r<size-10;r++){   // white space
     i = 0;
     for(theta=0;theta<2*M_PI;theta+=.0025){
       circular[r][i][0] = circular[r][i][1] = circular[r][i][2] = 255 - rand()%20;
+      // veins
+      if(veins[i]){  // continuing vein
+	circular[r][i][0] = veins[i];
+	circular[r][i][1] = circular[r][i][2] = 100;
+	if(!veins[i]){
+	  veins[i-1] = 0;
+	  veins[i+1] = veins[i];
+	}
+	else if(rand()%2){
+	  veins[i+1] = 0;
+	  veins[i-1] = veins[i];
+	}
+	else if(rand()%2){
+	  veins[i+1] = veins[i+2] = veins[i];
+	  veins[i-1] = veins[i] = 0;
+	}
+	else{
+	  veins[i-1] = 0;
+	  veins[i+1] = veins[i];
+	}
+      }
+      else if(rand()%25000<1){  // new vein
+	veins[i] = circular[r][i][0] = 200 + rand()%56;
+	circular[r][i][1] = circular[r][i][2] = 100;
+      }
       i++;
     }
   }
