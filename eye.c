@@ -111,36 +111,44 @@ void theta_colors(int size){
     }
   }
 
-  int veins[2600] = {0};
+  int veins[2600][2] = {{0}};
   for(;r<size-10;r++){   // white space
     i = 0;
     for(theta=0;theta<2*M_PI;theta+=.0025){
-      circular[r][i][0] = circular[r][i][1] = circular[r][i][2] = 255 - rand()%20;
       // veins
-      if(veins[i]){  // continuing vein
-	circular[r][i][0] = veins[i];
+      if(veins[i][0]){  // continuing vein
+	circular[r][i][0] = veins[i][0];
 	circular[r][i][1] = circular[r][i][2] = 100;
-	if(!veins[i]){
-	  veins[i-1] = 0;
-	  veins[i+1] = veins[i];
+
+	if(veins[i][1]==1 && rand()%3==0){  // move right
+	  veins[i+2][0] = veins[i+1][0] = veins[i][0];
+	  veins[i-1][0] = veins[i][0] = 0;
+	  veins[i+1][1] = veins[i+2][1] = veins[i][1];
+	  i++;
+	  circular[r][i][0] = veins[i][0];
+	  circular[r][i][1] = circular[r][i][2] = 100;
+	  i++;
+	  circular[r][i][0] = veins[i][0];
+	  circular[r][i][1] = circular[r][i][2] = 100;
 	}
-	else if(rand()%2){
-	  veins[i+1] = 0;
-	  veins[i-1] = veins[i];
+	else if(veins[i][1]==-1 && rand()%3==0){  // move left
+	  veins[i-2][0] = veins[i-1][0] = veins[i][0];
+	  veins[i+1][0] = veins[i][0] = 0;
+	  veins[i-1][1] = veins[i-2][1] = veins[i][1];
 	}
-	else if(rand()%2){
-	  veins[i+1] = veins[i+2] = veins[i];
-	  veins[i-1] = veins[i] = 0;
-	}
-	else{
-	  veins[i-1] = 0;
-	  veins[i+1] = veins[i];
+	else if(rand()%50==0){  // switch direction
+	  veins[i-1][1] *= -1;
+	  veins[i][1] *= -1;
+	  veins[i+1][1] *= -1;
 	}
       }
-      else if(rand()%25000<1){  // new vein
-	veins[i] = circular[r][i][0] = 200 + rand()%56;
+      else if(rand()%25000==0){  // new vein
+	veins[i][0] = veins[i-1][0] = circular[r][i][0] = 200 + rand()%56;
 	circular[r][i][1] = circular[r][i][2] = 100;
+	veins[i][1] = pow(-1,rand()%2);
       }
+      // no vein
+      else circular[r][i][0] = circular[r][i][1] = circular[r][i][2] = 255 - rand()%20;
       i++;
     }
   }
