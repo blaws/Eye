@@ -4,10 +4,12 @@
 #include <math.h>
 #include <stdlib.h>
 #include <GLUT/glut.h>
+#include "font.h"
 
 int wsize=600;
 int c[3];   // base eyecolor is (c[0],c[1],c[2]); default: random
-int white;
+int white;  // radius of beginning of white space
+int currentIndex;  // for color selection
 int circular[600][6300][3]={{{0}}};
 float square[600][600][3]={{{0}}};
 
@@ -83,7 +85,7 @@ void theta_colors(int size){
   int r,c1,c2,c3,brightness[2600],variance[2600][3],i=0,j=0,chanceofstreak;
   double theta;
 
-  int sinamp = rand()%16 * pow(-1,rand()%2);
+  int sinamp = rand()%16 * pow(-1,rand()%2) + 10;
   int sinshift = rand()%300;
   for(theta=0;theta<2*M_PI;theta+=.0025){  // set brightness for each angle, starting and ending with the same value
     brightness[i] = sinamp*sin(i/200.0+sinshift);
@@ -213,12 +215,61 @@ void keyboard(unsigned char key,int x,int y){
   }
 }
 
+void keyboardSpecials(int key,int x,int y){
+  switch(key){
+  case GLUT_KEY_UP:
+    c[currentIndex] += 5;
+    if(c[currentIndex]>255) c[currentIndex]=255;
+    else drawEye();
+    break;
+  case GLUT_KEY_DOWN:
+    c[currentIndex] -= 5;
+    if(c[currentIndex]<0) c[currentIndex]=0;
+    else drawEye();
+    break;
+  case GLUT_KEY_LEFT:
+    currentIndex = (currentIndex+2) % 3;
+    glutPostRedisplay();
+    break;
+  case GLUT_KEY_RIGHT:
+    currentIndex = (currentIndex+1) % 3;
+    glutPostRedisplay();
+    break;
+  default:
+    break;
+  }
+}
+
 void display(void){
-  int r,i,x,y;
-  double theta;
+  int i,offset;
+  char value[100];
   glClear(GL_COLOR_BUFFER_BIT);
+
+  // eye
   glRasterPos2i(0,wsize);
   glDrawPixels(wsize,wsize,GL_RGB,GL_FLOAT,square);
+
+  // color bars
+  for(i=0;i<3;i++){
+    glColor3f(i==0,i==1,i==2);
+    glRectf(wsize+50+50*i,wsize-40,wsize+60+50*i,10+(1-c[i]/255.0)*(wsize-50));
+    sprintf(value,"%d",c[i]);
+    glColor3f(i==0,i==1,i==2);
+
+    if(c[i]>99) offset=wsize+40;
+    else if(c[i]>9) offset=wsize+45;
+    else offset=wsize+50;
+    glRasterPos2i(offset+50*i,wsize-25);
+    printString(value);
+  }
+  // current index indicator
+  glColor3f(1,1,0);
+  glBegin(GL_TRIANGLES);
+  glVertex2f(wsize+50*currentIndex+45,wsize-10);
+  glVertex2f(wsize+50*currentIndex+55,wsize-20);
+  glVertex2f(wsize+50*currentIndex+65,wsize-10);
+  glEnd();
+
   glutSwapBuffers();
 }
 
@@ -226,20 +277,22 @@ int main(int argc,char* argv[]){
   int i;
   srand(time(NULL));
 
-  for(i=0;i<3;i++) c[i]=rand()%256;
-  printf("Base eyecolor (r,g,b): ");
-  scanf("%d,%d,%d",&c[0],&c[1],&c[2]);
+  for(i=0;i<3;i++) c[i]=rand()%52 * 5; // random multiple of 5 from 0 to 255
+  //printf("Base eyecolor (r,g,b): ");
+  //scanf("%d,%d,%d",&c[0],&c[1],&c[2]);
 
   glutInit(&argc,argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-  glutInitWindowSize(wsize,wsize);
+  glutInitWindowSize(wsize+200,wsize);
   glutInitWindowPosition(0,0);
   glutCreateWindow(argv[0]);
   glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+  makeRasterFont();
 
   glutDisplayFunc(display);
   glutReshapeFunc(reshape);
   glutKeyboardFunc(keyboard);
+  glutSpecialFunc(keyboardSpecials);
 
   drawEye();
   glutMainLoop();
