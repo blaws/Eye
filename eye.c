@@ -7,39 +7,58 @@
 
 int wsize=600;
 int c[3];   // base eyecolor is (c[0],c[1],c[2]); default: random
+int white;
 int circular[600][6300][3]={{{0}}};
 float square[600][600][3]={{{0}}};
 
-void v_band(int r,int mv){
+void v_band(int r,int mv,int dir){
   // offset current band to make room
-  circular[r+5][0][0] = circular[r][0][0];
-  circular[r+5][0][1] = circular[r][0][1];
-  circular[r+5][0][2] = circular[r][0][2];
+  circular[r+5*dir][0][0] = circular[r][0][0];
+  circular[r+5*dir][0][1] = circular[r][0][1];
+  circular[r+5*dir][0][2] = circular[r][0][2];
   // create high-variance band
-  circular[r+1][0][0] = circular[r][0][0] + pow(-1,rand()%2)*(rand()%mv);
-  circular[r+1][0][1] = circular[r][0][1] + pow(-1,rand()%2)*(rand()%mv);
-  circular[r+1][0][2] = circular[r][0][2] + pow(-1,rand()%2)*(rand()%mv);
+  circular[r+1*dir][0][0] = circular[r][0][0] + pow(-1,rand()%2)*(rand()%mv);
+  circular[r+1*dir][0][1] = circular[r][0][1] + pow(-1,rand()%2)*(rand()%mv);
+  circular[r+1*dir][0][2] = circular[r][0][2] + pow(-1,rand()%2)*(rand()%mv);
   // blend high-variance band into the rest
-  circular[r][0][0] = circular[r+3][0][0] = (circular[r+5][0][0]+circular[r+1][0][0]) / 2;
-  circular[r][0][1] = circular[r+3][0][1] = (circular[r+5][0][1]+circular[r+1][0][1]) / 2;
-  circular[r][0][2] = circular[r+3][0][2] = (circular[r+5][0][2]+circular[r+1][0][2]) / 2;
-  circular[r+2][0][0] = (circular[r+1][0][0]+circular[r+3][0][0]) / 2;
-  circular[r+2][0][1] = (circular[r+1][0][1]+circular[r+3][0][1]) / 2;
-  circular[r+2][0][2] = (circular[r+1][0][2]+circular[r+3][0][2]) / 2;
-  circular[r+4][0][0] = (circular[r+3][0][0]+circular[r+5][0][0]) / 2;
-  circular[r+4][0][1] = (circular[r+3][0][1]+circular[r+5][0][1]) / 2;
-  circular[r+4][0][2] = (circular[r+3][0][2]+circular[r+5][0][2]) / 2;
+  circular[r][0][0] = circular[r+3*dir][0][0] = (circular[r+5*dir][0][0]+circular[r+dir][0][0]) / 2;
+  circular[r][0][1] = circular[r+3*dir][0][1] = (circular[r+5*dir][0][1]+circular[r+dir][0][1]) / 2;
+  circular[r][0][2] = circular[r+3*dir][0][2] = (circular[r+5*dir][0][2]+circular[r+dir][0][2]) / 2;
+  circular[r+2*dir][0][0] = (circular[r+1*dir][0][0]+circular[r+3*dir][0][0]) / 2;
+  circular[r+2*dir][0][1] = (circular[r+1*dir][0][1]+circular[r+3*dir][0][1]) / 2;
+  circular[r+2*dir][0][2] = (circular[r+1*dir][0][2]+circular[r+3*dir][0][2]) / 2;
+  circular[r+4*dir][0][0] = (circular[r+3*dir][0][0]+circular[r+5*dir][0][0]) / 2;
+  circular[r+4*dir][0][1] = (circular[r+3*dir][0][1]+circular[r+5*dir][0][1]) / 2;
+  circular[r+4*dir][0][2] = (circular[r+3*dir][0][2]+circular[r+5*dir][0][2]) / 2;
 }
 
 void r_colors(int size){
   int r;
-  int start = 50 + rand()%20;
+  int pupil = 50 + rand()%20;
+  white = size-110 + rand()%21;
+  int start = (white + pupil) / 2;
 
-  for(r=0;r<start;r++) circular[r][0][0] = circular[r][0][1] = circular[r][0][2] = 0;
+  for(r=0;r<pupil;r++) circular[r][0][0] = circular[r][0][1] = circular[r][0][2] = 0;  // inside pupil
   circular[start][0][0] = c[0];
   circular[start][0][1] = c[1];
   circular[start][0][2] = c[2];
-  for(r=start+1;r<size-100;r++){
+
+  for(r=start;r>pupil;r--){  // middle in
+    circular[r-1][0][0] = circular[r][0][0] + pow(-1,rand()%2)*(rand()%3);
+    circular[r-1][0][1] = circular[r][0][1] + pow(-1,rand()%2)*(rand()%3);
+    circular[r-1][0][2] = circular[r][0][2] + pow(-1,rand()%2)*(rand()%3);
+    if(circular[r][0][0]>255) circular[r-1][0][0]=255;
+    else if(circular[r-1][0][0]<0) circular[r-1][0][0]=0;
+    if(circular[r-1][0][1]>255) circular[r-1][0][1]=255;
+    else if(circular[r-1][0][1]<0) circular[r-1][0][1]=0;
+    if(circular[r-1][0][2]>255) circular[r-1][0][2]=255;
+    else if(circular[r-1][0][2]<0) circular[r-1][0][2]=0;
+    if(rand()%200 < 1){    // random bands of high-variance colors
+      v_band(r-1,50,-1);
+      r-=5;
+    }
+  }
+  for(r=start+1;r<white;r++){  // middle out
     circular[r][0][0] = circular[r-1][0][0] + pow(-1,rand()%2)*(rand()%3);
     circular[r][0][1] = circular[r-1][0][1] + pow(-1,rand()%2)*(rand()%3);
     circular[r][0][2] = circular[r-1][0][2] + pow(-1,rand()%2)*(rand()%3);
@@ -49,16 +68,10 @@ void r_colors(int size){
     else if(circular[r][0][1]<0) circular[r][0][1]=0;
     if(circular[r][0][2]>255) circular[r][0][2]=255;
     else if(circular[r][0][2]<0) circular[r][0][2]=0;
-
     if(rand()%200 < 1){    // random bands of high-variance colors
-      v_band(r,50);
+      v_band(r,50,1);
       r+=5;
     }
-
-    // Display vertical and horizontal guide-lines; highlights where v-bands have been added
-    /*gfx_color(circular[r][0],circular[r][1],circular[r][2]);
-    gfx_line(size,size-r,size,size-r);
-    gfx_line(size+r,size,size+r,size);*/
   }
 
   for(;r<size-10;r++){  // white space
@@ -88,19 +101,12 @@ void theta_colors(int size){
     i++;
   }
 
-  for(r=0;r<size-100;r++){  // color each ring with variance
+  for(r=0;r<white;r++){  // color each ring with variance
     i = 0;
     for(theta=0;theta<2*M_PI;theta+=.0025){
-      /*if(circular[r][0][0]=circular[r][0][1]=circular[r][0][2]=0){
-	circular[r][i][0]=circular[r][0][0]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
-	circular[r][i][1]=circular[r][0][1]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
-	circular[r][i][2]=circular[r][0][2]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
-      }
-      else{*/
-	circular[r][i][0]=circular[r][0][0]+variance[i][0]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
-	circular[r][i][1]=circular[r][0][1]+variance[i][1]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
-	circular[r][i][2]=circular[r][0][2]+variance[i][2]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
-	//}
+      circular[r][i][0]=circular[r][0][0]+variance[i][0]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
+      circular[r][i][1]=circular[r][0][1]+variance[i][1]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
+      circular[r][i][2]=circular[r][0][2]+variance[i][2]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
       if(circular[r][i][0]<0) circular[r][i][0]=0;
       if(circular[r][i][0]>255) circular[r][i][0]=255;
       if(circular[r][i][1]<0) circular[r][i][1]=0;
@@ -211,20 +217,8 @@ void display(void){
   int r,i,x,y;
   double theta;
   glClear(GL_COLOR_BUFFER_BIT);
-
-  /*for(r=50;r<wsize-10;r++){
-    i = 0;
-    for(theta=0;theta<2*M_PI;theta+=.05){
-      x = wsize/2 + cos(theta)*r;
-      y = wsize/2 + sin(theta)*r;
-      glColor3f(circular[i][0],circular[i][1],circular[i][2]);
-      glRectf(x,y,x,y);
-      i++;
-    }
-    }*/
   glRasterPos2i(0,wsize);
   glDrawPixels(wsize,wsize,GL_RGB,GL_FLOAT,square);
-
   glutSwapBuffers();
 }
 
