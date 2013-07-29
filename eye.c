@@ -10,10 +10,32 @@ int wsize=600;
 int c[3];   // base eyecolor is (c[0],c[1],c[2]); default: random
 int white;  // radius of beginning of white space
 int currentIndex;  // for color selection
-int circular[600][6300][3]={{{0}}};
-float square[600][600][3]={{{0}}};
+int circular[600][6300][3];
+float square[600][600][3];
+int vbands[600][3];
 
-void v_band(int r,int mv,int dir){
+void v_band(){//int r,int mv,int dir){
+  int r,i,j,k,inc;
+  double theta;
+  for(r=0;r<600;r++){
+    if(vbands[r][0] || vbands[r][1] || vbands[r][2]){
+      inc = 0;
+      for(theta=0,i=0;theta<2*M_PI;theta+=.0025,i++){
+	if(inc<1 && rand()%20==0) inc++;
+	if(inc>-1 && rand()%20==0) inc--;
+	for(j=0;j<5;j++){
+	  for(k=0;k<3;k++){
+	    if(rand()%4){
+	      circular[r+inc+j][i][k] += vbands[r][k]/(j+1);
+	      circular[r+inc+j][i][k] *= (j+1.0)/(j+2.0);
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  /*
   // offset current band to make room
   circular[r+5*dir][0][0] = circular[r][0][0];
   circular[r+5*dir][0][1] = circular[r][0][1];
@@ -32,13 +54,15 @@ void v_band(int r,int mv,int dir){
   circular[r+4*dir][0][0] = (circular[r+3*dir][0][0]+circular[r+5*dir][0][0]) / 2;
   circular[r+4*dir][0][1] = (circular[r+3*dir][0][1]+circular[r+5*dir][0][1]) / 2;
   circular[r+4*dir][0][2] = (circular[r+3*dir][0][2]+circular[r+5*dir][0][2]) / 2;
+  */
 }
 
 void r_colors(int size){
-  int r;
+  int r,i;
   int pupil = 50 + rand()%20;
   white = size-110 + rand()%21;
   int start = (white + pupil) / 2;
+  int chanceofvband = rand()%5;
 
   for(r=0;r<pupil;r++) circular[r][0][0] = circular[r][0][1] = circular[r][0][2] = 0;  // inside pupil
   circular[start][0][0] = c[0];
@@ -55,9 +79,10 @@ void r_colors(int size){
     else if(circular[r-1][0][1]<0) circular[r-1][0][1]=0;
     if(circular[r-1][0][2]>255) circular[r-1][0][2]=255;
     else if(circular[r-1][0][2]<0) circular[r-1][0][2]=0;
-    if(rand()%200 < 1){    // random bands of high-variance colors
-      v_band(r-1,50,-1);
-      r-=5;
+    if(rand()%200 < chanceofvband){    // random bands of high-variance colors
+      for(i=0;i<3;i++) vbands[r][i]=circular[r][0][i]+rand()%100*pow(-1,rand()%2);
+      //v_band(r-1,50,-1);
+      //r-=5;
     }
   }
   for(r=start+1;r<white;r++){  // middle out
@@ -70,9 +95,10 @@ void r_colors(int size){
     else if(circular[r][0][1]<0) circular[r][0][1]=0;
     if(circular[r][0][2]>255) circular[r][0][2]=255;
     else if(circular[r][0][2]<0) circular[r][0][2]=0;
-    if(rand()%200 < 1){    // random bands of high-variance colors
-      v_band(r,50,1);
-      r+=5;
+    if(rand()%200 < chanceofvband){    // random bands of high-variance colors
+      for(i=0;i<3;i++) vbands[r][i]=circular[r][0][i]+rand()%100*pow(-1,rand()%2);
+      //v_band(r,50,1);
+      //r+=5;
     }
   }
 
@@ -186,9 +212,25 @@ void circle_to_square(void){
   }
 }
 
+void clear_matrices(){
+  int r,i,k;
+  for(r=0;r<600;r++){
+    for(k=0;k<3;k++){
+      for(i=0;i<600;i++){
+	circular[r][i][k] = 0;
+	square[r][i][k] = 0;
+      }
+      for(;i<6300;i++) circular[r][i][k]=0;
+      vbands[r][k] = 0;
+    }
+  }
+}
+
 void drawEye(void){
+  clear_matrices();
   r_colors(wsize/2);
   theta_colors(wsize/2);
+  v_band();
   circle_to_square();
   glutPostRedisplay();
 }
@@ -229,15 +271,14 @@ void keyboardSpecials(int key,int x,int y){
     break;
   case GLUT_KEY_LEFT:
     currentIndex = (currentIndex+2) % 3;
-    glutPostRedisplay();
     break;
   case GLUT_KEY_RIGHT:
     currentIndex = (currentIndex+1) % 3;
-    glutPostRedisplay();
     break;
   default:
     break;
   }
+  glutPostRedisplay();
 }
 
 void display(void){
