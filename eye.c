@@ -79,7 +79,7 @@ void r_colors(int size){
     else if(circular[r-1][0][1]<0) circular[r-1][0][1]=0;
     if(circular[r-1][0][2]>255) circular[r-1][0][2]=255;
     else if(circular[r-1][0][2]<0) circular[r-1][0][2]=0;
-    if(rand()%200 < chanceofvband){    // random bands of high-variance colors
+    if(rand()%200<chanceofvband && r<white-5){    // random bands of high-variance colors
       for(i=0;i<3;i++) vbands[r][i]=circular[r][0][i]+rand()%100*pow(-1,rand()%2);
       //v_band(r-1,50,-1);
       //r-=5;
@@ -95,7 +95,7 @@ void r_colors(int size){
     else if(circular[r][0][1]<0) circular[r][0][1]=0;
     if(circular[r][0][2]>255) circular[r][0][2]=255;
     else if(circular[r][0][2]<0) circular[r][0][2]=0;
-    if(rand()%200 < chanceofvband){    // random bands of high-variance colors
+    if(rand()%200<chanceofvband && r<white-5){    // random bands of high-variance colors
       for(i=0;i<3;i++) vbands[r][i]=circular[r][0][i]+rand()%100*pow(-1,rand()%2);
       //v_band(r,50,1);
       //r+=5;
