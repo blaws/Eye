@@ -34,27 +34,6 @@ void v_band(){//int r,int mv,int dir){
       }
     }
   }
-
-  /*
-  // offset current band to make room
-  circular[r+5*dir][0][0] = circular[r][0][0];
-  circular[r+5*dir][0][1] = circular[r][0][1];
-  circular[r+5*dir][0][2] = circular[r][0][2];
-  // create high-variance band
-  circular[r+1*dir][0][0] = circular[r][0][0] + pow(-1,rand()%2)*(rand()%mv);
-  circular[r+1*dir][0][1] = circular[r][0][1] + pow(-1,rand()%2)*(rand()%mv);
-  circular[r+1*dir][0][2] = circular[r][0][2] + pow(-1,rand()%2)*(rand()%mv);
-  // blend high-variance band into the rest
-  circular[r][0][0] = circular[r+3*dir][0][0] = (circular[r+5*dir][0][0]+circular[r+dir][0][0]) / 2;
-  circular[r][0][1] = circular[r+3*dir][0][1] = (circular[r+5*dir][0][1]+circular[r+dir][0][1]) / 2;
-  circular[r][0][2] = circular[r+3*dir][0][2] = (circular[r+5*dir][0][2]+circular[r+dir][0][2]) / 2;
-  circular[r+2*dir][0][0] = (circular[r+1*dir][0][0]+circular[r+3*dir][0][0]) / 2;
-  circular[r+2*dir][0][1] = (circular[r+1*dir][0][1]+circular[r+3*dir][0][1]) / 2;
-  circular[r+2*dir][0][2] = (circular[r+1*dir][0][2]+circular[r+3*dir][0][2]) / 2;
-  circular[r+4*dir][0][0] = (circular[r+3*dir][0][0]+circular[r+5*dir][0][0]) / 2;
-  circular[r+4*dir][0][1] = (circular[r+3*dir][0][1]+circular[r+5*dir][0][1]) / 2;
-  circular[r+4*dir][0][2] = (circular[r+3*dir][0][2]+circular[r+5*dir][0][2]) / 2;
-  */
 }
 
 void crypt(){
@@ -66,7 +45,7 @@ void crypt(){
       if(crypts[r][i][0]){
 	for(x=-crypts[r][i][1];x<crypts[r][i][1];x++){
 	  for(y=-crypts[r][i][2];y<crypts[r][i][2];y++){
-	    if(hypot(x,y)<crypts[r][i][2] && rand()%4){
+	    if((hypot(x,y)<crypts[r][i][1] || hypot(x,y)<crypts[r][i][2]) && rand()%4){
 	      if((r+y<white && r+y>pupil) && (i+x>=0 || i+x<6300)){
 		for(j=0;j<3;j++){
 		  circular[r+y][i+x][j]-=crypts[r][i][0];
@@ -173,7 +152,7 @@ void theta_colors(int size){
       // add crypts
       if(rand()%100000<chanceofcrypt){
 	crypts[r][i][0] = rand()%30+1;
-	crypts[r][i][1] = rand()%10+1;
+	crypts[r][i][1] = rand()%20+1;
 	crypts[r][i][2] = rand()%10+1;
       }
     }
@@ -223,7 +202,7 @@ void theta_colors(int size){
 }
 
 void circle_to_square(void){
-  int r,i,x,y;
+  int r,i,j,x,y;
   double theta;
   for(r=0;r<wsize/2-10;r++){
     i = 0;
@@ -234,10 +213,8 @@ void circle_to_square(void){
       square[x][y][1] = circular[r][i][1] / 255.0;
       square[x][y][2] = circular[r][i][2] / 255.0;
 
-      if(r>wsize/2-100){  // eliminate holes in white space
-	square[x+1][y][0] = square[x][y+1][0] = square[x+1][y+1][0] = square[x][y][0];
-	square[x+1][y][1] = square[x][y+1][1] = square[x+1][y+1][1] = square[x][y][1];
-	square[x+1][y][2] = square[x][y+1][2] = square[x+1][y+1][2] = square[x][y][2];
+      if(r>white){  // eliminate holes in sclera
+	for(j=0;j<3;j++) square[x+1][y][j] = square[x][y+1][j] = square[x+1][y+1][j] = square[x][y][j];
       }
 
       i++;
@@ -296,12 +273,10 @@ void keyboardSpecials(int key,int x,int y){
   case GLUT_KEY_UP:
     c[currentIndex] += 5;
     if(c[currentIndex]>255) c[currentIndex]=255;
-    else drawEye();
     break;
   case GLUT_KEY_DOWN:
     c[currentIndex] -= 5;
     if(c[currentIndex]<0) c[currentIndex]=0;
-    else drawEye();
     break;
   case GLUT_KEY_LEFT:
     currentIndex = (currentIndex+2) % 3;
@@ -313,6 +288,17 @@ void keyboardSpecials(int key,int x,int y){
     break;
   }
   glutPostRedisplay();
+}
+
+void keyboardSpecialsUp(int key,int x,int y){
+  switch(key){
+  case GLUT_KEY_UP:
+  case GLUT_KEY_DOWN:
+    drawEye();
+    break;
+  default:
+    break;
+  }
 }
 
 void display(void){
@@ -368,6 +354,7 @@ int main(int argc,char* argv[]){
   glutReshapeFunc(reshape);
   glutKeyboardFunc(keyboard);
   glutSpecialFunc(keyboardSpecials);
+  glutSpecialUpFunc(keyboardSpecialsUp);
 
   drawEye();
   glutMainLoop();
