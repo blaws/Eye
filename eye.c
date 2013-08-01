@@ -1,4 +1,4 @@
-// Blaws, eye.c
+// blaws, eye.c
 
 #include <stdio.h>
 #include <math.h>
@@ -8,11 +8,11 @@
 
 int wsize=600;
 int c[3];   // base eyecolor is (c[0],c[1],c[2]); default: random
-int white;  // radius of beginning of white space
+int pupil,white;  // radius of beginning and end of iris
 int currentIndex;  // for color selection
 int circular[600][6300][3];
 float square[600][600][3];
-int vbands[600][3];
+int vbands[600][3],crypts[600][6300][3];
 
 void v_band(){//int r,int mv,int dir){
   int r,i,j,k,inc;
@@ -25,7 +25,7 @@ void v_band(){//int r,int mv,int dir){
 	if(inc>-1 && rand()%20==0) inc--;
 	for(j=0;j<5;j++){
 	  for(k=0;k<3;k++){
-	    if(rand()%4){
+	    if(rand()%4 && r+inc+j<white){
 	      circular[r+inc+j][i][k] += vbands[r][k]/(j+1);
 	      circular[r+inc+j][i][k] *= (j+1.0)/(j+2.0);
 	    }
@@ -57,9 +57,34 @@ void v_band(){//int r,int mv,int dir){
   */
 }
 
+void crypt(){
+  int r,i,j,x,y;
+  double theta;
+  for(r=0;r<600;r++){
+    for(theta=0,i=0;theta<2*M_PI;theta+=.0025,i++){
+
+      if(crypts[r][i][0]){
+	for(x=-crypts[r][i][1];x<crypts[r][i][1];x++){
+	  for(y=-crypts[r][i][2];y<crypts[r][i][2];y++){
+	    if(hypot(x,y)<crypts[r][i][2] && rand()%4){
+	      if((r+y<white && r+y>pupil) && (i+x>=0 || i+x<6300)){
+		for(j=0;j<3;j++){
+		  circular[r+y][i+x][j]-=crypts[r][i][0];
+		  if(circular[r+y][i+x][j]<0) circular[r+y][i+x][j]=0;
+		}
+	      }
+	    }
+	  }
+	}
+      }
+
+    }
+  }
+}
+
 void r_colors(int size){
   int r,i;
-  int pupil = 50 + rand()%20;
+  pupil = 50 + rand()%20;
   white = size-110 + rand()%21;
   int start = (white + pupil) / 2;
   int chanceofvband = rand()%5;
@@ -95,30 +120,32 @@ void r_colors(int size){
     else if(circular[r][0][1]<0) circular[r][0][1]=0;
     if(circular[r][0][2]>255) circular[r][0][2]=255;
     else if(circular[r][0][2]<0) circular[r][0][2]=0;
-    if(rand()%200<chanceofvband && r<white-5){    // random bands of high-variance colors
+    if(rand()%200<chanceofvband){    // random bands of high-variance colors
       for(i=0;i<3;i++) vbands[r][i]=circular[r][0][i]+rand()%100*pow(-1,rand()%2);
       //v_band(r,50,1);
       //r+=5;
     }
   }
 
-  for(;r<size-10;r++){  // white space
+  for(;r<size-10;r++){  // white space (sclera)
     circular[r][0][0] = circular[r][0][1] = circular[r][0][2] = 255 - rand()%20;
   }
 }
 
 void theta_colors(int size){
-  int r,c1,c2,c3,brightness[2600],variance[2600][3],i=0,j=0,chanceofstreak;
+  int r,c1,c2,c3,brightness[2600],variance[2600][3],i=0,j=0;
+  int chanceofstreak = rand()%15;
+  int chanceofcrypt = rand()%15;
   double theta;
 
   int sinamp = rand()%16 * pow(-1,rand()%2) + 10;
   int sinshift = rand()%300;
+
   for(theta=0;theta<2*M_PI;theta+=.0025){  // set brightness for each angle, starting and ending with the same value
     brightness[i] = sinamp*sin(i/200.0+sinshift);
     i++;
   }
 
-  chanceofstreak = rand()%15;
   i = 0;
   for(theta=0;theta<2*M_PI;theta+=.0025){  // add streaks
     if(rand()%15 < chanceofstreak){
@@ -142,6 +169,13 @@ void theta_colors(int size){
       if(circular[r][i][2]<0) circular[r][i][2]=0;
       if(circular[r][i][2]>255) circular[r][i][2]=255;
       i++;
+
+      // add crypts
+      if(rand()%100000<chanceofcrypt){
+	crypts[r][i][0] = rand()%30+1;
+	crypts[r][i][1] = rand()%10+1;
+	crypts[r][i][2] = rand()%10+1;
+      }
     }
   }
 
@@ -217,10 +251,9 @@ void clear_matrices(){
   for(r=0;r<600;r++){
     for(k=0;k<3;k++){
       for(i=0;i<600;i++){
-	circular[r][i][k] = 0;
-	square[r][i][k] = 0;
+	circular[r][i][k] = crypts[r][i][k] = square[r][i][k] = 0;
       }
-      for(;i<6300;i++) circular[r][i][k]=0;
+      for(;i<6300;i++) circular[r][i][k]=crypts[r][i][k]=0;
       vbands[r][k] = 0;
     }
   }
@@ -231,6 +264,7 @@ void drawEye(void){
   r_colors(wsize/2);
   theta_colors(wsize/2);
   v_band();
+  crypt();
   circle_to_square();
   glutPostRedisplay();
 }
