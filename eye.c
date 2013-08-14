@@ -13,6 +13,7 @@ int currentIndex;  // for color selection
 int circular[600][6300][3];
 float square[600][600][3];
 int vbands[600][3],crypts[600][6300][3];
+int isLidded=0;
 
 void v_band(){//int r,int mv,int dir){
   int r,i,j,k,inc;
@@ -204,18 +205,29 @@ void theta_colors(int size){
 void circle_to_square(void){
   int r,i,j,x,y;
   double theta;
+  int lidRadius = 2*white + rand()%40-20;
+
+  for(x=0;x<wsize;x++){
+    for(y=0;y<wsize;y++){
+      square[x][y][0] = square[x][y][1] = square[x][y][2] = 0.0;
+    }
+  }
+
   for(r=0;r<wsize/2-10;r++){
     i = 0;
     for(theta=0;theta<2*M_PI;theta+=.0025){
       x = wsize/2 + cos(theta)*r;
       y = wsize/2 + sin(theta)*r;
-      square[x][y][0] = circular[r][i][0] / 255.0;
-      square[x][y][1] = circular[r][i][1] / 255.0;
-      square[x][y][2] = circular[r][i][2] / 255.0;
+      if(!isLidded || (hypot(wsize/2-white-x,wsize/2-y)<lidRadius && hypot(wsize/2+white-x,wsize/2-y)<lidRadius)){
+	square[x][y][0] = circular[r][i][0] / 255.0;
+	square[x][y][1] = circular[r][i][1] / 255.0;
+	square[x][y][2] = circular[r][i][2] / 255.0;
 
-      if(r>white){  // eliminate holes in sclera
-	for(j=0;j<3;j++) square[x+1][y][j] = square[x][y+1][j] = square[x+1][y+1][j] = square[x][y][j];
+	if(r>white){  // eliminate holes in sclera
+	  for(j=0;j<3;j++) square[x+1][y][j] = square[x][y+1][j] = square[x+1][y+1][j] = square[x][y][j];
+	}
       }
+      //else square[x][y][0] = square[x][y][1] = square[x][y][2] = 0.0;
 
       i++;
       //printf("x=%d, y=%d; r=%d, theta=%f  =  (%f,%f,%f)\n",x,y,r,theta,square[x][y][0],square[x][y][1],square[x][y][2]);
@@ -228,7 +240,8 @@ void clear_matrices(){
   for(r=0;r<600;r++){
     for(k=0;k<3;k++){
       for(i=0;i<600;i++){
-	circular[r][i][k] = crypts[r][i][k] = square[r][i][k] = 0;
+	circular[r][i][k] = crypts[r][i][k] = 0;
+	square[r][i][k] = 0.0;
       }
       for(;i<6300;i++) circular[r][i][k]=crypts[r][i][k]=0;
       vbands[r][k] = 0;
@@ -236,12 +249,15 @@ void clear_matrices(){
   }
 }
 
-void drawEye(void){
+void makeEye(void){
   clear_matrices();
   r_colors(wsize/2);
   theta_colors(wsize/2);
   v_band();
   crypt();
+}
+
+void drawEye(void){
   circle_to_square();
   glutPostRedisplay();
 }
@@ -262,7 +278,13 @@ void keyboard(unsigned char key,int x,int y){
   case 27:  // ESC key
     exit(0);
     break;
+  case 'l':
+  case 'L':
+    isLidded = !isLidded;
+    drawEye();
+    break;
   default:
+    makeEye();
     drawEye();
     break;
   }
@@ -294,6 +316,7 @@ void keyboardSpecialsUp(int key,int x,int y){
   switch(key){
   case GLUT_KEY_UP:
   case GLUT_KEY_DOWN:
+    makeEye();
     drawEye();
     break;
   default:
@@ -356,6 +379,7 @@ int main(int argc,char* argv[]){
   glutSpecialFunc(keyboardSpecials);
   glutSpecialUpFunc(keyboardSpecialsUp);
 
+  makeEye();
   drawEye();
   glutMainLoop();
 

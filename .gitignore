@@ -1,4 +1,6 @@
-eye
 eye_unix*
 *~
 .DS_Store
+
+# executable not ignored because users must have the OpenGL libraries 
+# included in XCode to make it themselves
