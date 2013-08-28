@@ -2,18 +2,24 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 #include <stdlib.h>
 #include <GLUT/glut.h>
 #include "font.h"
+
+int angle=0;
 
 int wsize=600;
 int c[3];   // base eyecolor is (c[0],c[1],c[2]); default: random
 int pupil,white;  // radius of beginning and end of iris
 int currentIndex;  // for color selection
 int circular[600][6300][3];
-float square[600][600][3];
+GLfloat square[1024][1024][3];
 int vbands[600][3],crypts[600][6300][3];
 int isLidded=0;
+GLfloat fourOnes[]={1.0,1.0,1.0,1.0},oneOne[]={0.0,0.0,1.0,0.0};
+GLuint texture;
+GLUquadricObj* sphere=NULL;
 
 void v_band(){//int r,int mv,int dir){
   int r,i,j,k,inc;
@@ -64,9 +70,9 @@ void crypt(){
 
 void r_colors(int size){
   int r,i;
-  pupil = 50 + rand()%20;
-  white = size-110 + rand()%21;
-  int start = (white + pupil) / 2;
+  pupil = (50 + rand()%20) /2;
+  white = (size-110 + rand()%21) /2;
+  int start = ((white + pupil) / 2) /2;
   int chanceofvband = rand()%5;
 
   for(r=0;r<pupil;r++) circular[r][0][0] = circular[r][0][1] = circular[r][0][2] = 0;  // inside pupil
@@ -107,13 +113,13 @@ void r_colors(int size){
     }
   }
 
-  for(;r<size-10;r++){  // white space (sclera)
+  for(;r<(size-10)/2;r++){  // white space (sclera)
     circular[r][0][0] = circular[r][0][1] = circular[r][0][2] = 255 - rand()%20;
   }
 }
 
 void theta_colors(int size){
-  int r,c1,c2,c3,brightness[2600],variance[2600][3],i=0,j=0;
+  int r,/*brightness[2600],*/variance[2600][3],i=0,j=0;
   int chanceofstreak = rand()%15;
   int chanceofcrypt = rand()%15;
   double theta;
@@ -121,13 +127,13 @@ void theta_colors(int size){
   int sinamp = rand()%16 * pow(-1,rand()%2) + 10;
   int sinshift = rand()%300;
 
-  for(theta=0;theta<2*M_PI;theta+=.0025){  // set brightness for each angle, starting and ending with the same value
+  /*for(theta=0;theta<2*M_PI;theta+=.005){  // set brightness for each angle, starting and ending with the same value
     brightness[i] = sinamp*sin(i/200.0+sinshift);
     i++;
-  }
+    }*/
 
   i = 0;
-  for(theta=0;theta<2*M_PI;theta+=.0025){  // add streaks
+  for(theta=0;theta<2*M_PI;theta+=.005){  // add streaks
     if(rand()%15 < chanceofstreak){
       for(j=0;j<3;j++)
 	variance[i][j] = pow(-1,rand()%2)*(rand()%15);
@@ -138,10 +144,10 @@ void theta_colors(int size){
 
   for(r=0;r<white;r++){  // color each ring with variance
     i = 0;
-    for(theta=0;theta<2*M_PI;theta+=.0025){
-      circular[r][i][0]=circular[r][0][0]+variance[i][0]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
-      circular[r][i][1]=circular[r][0][1]+variance[i][1]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
-      circular[r][i][2]=circular[r][0][2]+variance[i][2]+brightness[i]+pow(-1,rand()%2)*(rand()%10);
+    for(theta=0;theta<2*M_PI;theta+=.005){
+      circular[r][i][0]=circular[r][0][0]+variance[i][0]/*+brightness[i]*/+pow(-1,rand()%2)*(rand()%10);
+      circular[r][i][1]=circular[r][0][1]+variance[i][1]/*+brightness[i]*/+pow(-1,rand()%2)*(rand()%10);
+      circular[r][i][2]=circular[r][0][2]+variance[i][2]/*+brightness[i]*/+pow(-1,rand()%2)*(rand()%10);
       if(circular[r][i][0]<0) circular[r][i][0]=0;
       if(circular[r][i][0]>255) circular[r][i][0]=255;
       if(circular[r][i][1]<0) circular[r][i][1]=0;
@@ -160,9 +166,9 @@ void theta_colors(int size){
   }
 
   int veins[2600][2] = {{0}};
-  for(;r<size-10;r++){   // white space
+  for(;r<(size-10)/2;r++){   // white space
     i = 0;
-    for(theta=0;theta<2*M_PI;theta+=.0025){
+    for(theta=0;theta<2*M_PI;theta+=.005){
       // veins
       if(veins[i][0]){  // continuing vein
 	circular[r][i][0] = veins[i][0];
@@ -202,26 +208,50 @@ void theta_colors(int size){
   }
 }
 
+void init(void){
+  glGenTextures(1,&texture);
+  glBindTexture(GL_TEXTURE_2D,texture);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,600,600,0,GL_RGB,GL_FLOAT,square);
+
+  glEnable(GL_LIGHT0);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,fourOnes);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,fourOnes);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,50.0);
+
+  sphere = gluNewQuadric();
+  gluQuadricDrawStyle(sphere,GLU_FILL);
+  gluQuadricTexture(sphere,GL_TRUE);
+  gluQuadricNormals(sphere,GL_TRUE);
+}
+
 void circle_to_square(void){
   int r,i,j,x,y;
   double theta;
   int lidRadius = 2*white + rand()%40-20;
 
-  for(x=0;x<wsize;x++){
-    for(y=0;y<wsize;y++){
-      square[x][y][0] = square[x][y][1] = square[x][y][2] = 0.0;
+  for(x=0;x<1024;x++){
+    for(y=0;y<1024;y++){
+      if(!isLidded || (hypot(white-x,y)<lidRadius && hypot(white-x,y)<lidRadius)){
+        square[x][y][0] = circular[x][y][0] / 255.0;
+        square[x][y][1] = circular[x][y][1] / 255.0;
+        square[x][y][2] = circular[x][y][2] / 255.0;
+      }
     }
   }
 
-  for(r=0;r<wsize/2-10;r++){
+/*  for(r=0;r<wsize/2-10;r++){
     i = 0;
     for(theta=0;theta<2*M_PI;theta+=.0025){
       x = wsize/2 + cos(theta)*r;
       y = wsize/2 + sin(theta)*r;
       if(!isLidded || (hypot(wsize/2-white-x,wsize/2-y)<lidRadius && hypot(wsize/2+white-x,wsize/2-y)<lidRadius)){
-	square[x][y][0] = circular[r][i][0] / 255.0;
-	square[x][y][1] = circular[r][i][1] / 255.0;
-	square[x][y][2] = circular[r][i][2] / 255.0;
+	square[(x+512)%1024][y][0] = circular[r][i][0] / 255.0;
+	square[(x+512)%1024][y][1] = circular[r][i][1] / 255.0;
+	square[(x+512)%1024][y][2] = circular[r][i][2] / 255.0;
 
 	if(r>white){  // eliminate holes in sclera
 	  for(j=0;j<3;j++) square[x+1][y][j] = square[x][y+1][j] = square[x+1][y+1][j] = square[x][y][j];
@@ -233,6 +263,10 @@ void circle_to_square(void){
       //printf("x=%d, y=%d; r=%d, theta=%f  =  (%f,%f,%f)\n",x,y,r,theta,square[x][y][0],square[x][y][1],square[x][y][2]);
     }
   }
+*/
+
+  glBindTexture(GL_TEXTURE_2D,texture);
+  glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,600,600,0,GL_RGB,GL_FLOAT,square);
 }
 
 void clear_matrices(){
@@ -266,7 +300,7 @@ void reshape(int w,int h){
   glViewport(0,0,w,h);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(0,w,h,0,-1,1);
+  glOrtho(0,w,h,0,-wsize/2,wsize/2);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   glutPostRedisplay();
@@ -279,10 +313,10 @@ void keyboard(unsigned char key,int x,int y){
     exit(0);
     break;
   case 'l':
-  case 'L':
+    /*case 'L':
     isLidded = !isLidded;
     drawEye();
-    break;
+    break;*/
   default:
     makeEye();
     drawEye();
@@ -327,11 +361,25 @@ void keyboardSpecialsUp(int key,int x,int y){
 void display(void){
   int i,offset;
   char value[100];
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // eye
-  glRasterPos2i(0,wsize);
-  glDrawPixels(wsize,wsize,GL_RGB,GL_FLOAT,square);
+  /*glRasterPos2i(0,wsize);
+    glDrawPixels(wsize,wsize,GL_RGB,GL_FLOAT,square);*/
+  glEnable(GL_LIGHTING);
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D,texture);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+  glTranslatef(wsize/2,wsize/2,0);
+  //glRotatef(0.0,1.0,0.0,0.0);
+  glRotatef(180.0,0.0,1.0,0.0);
+  gluSphere(sphere,wsize/2-10,60,60);
+  glLoadIdentity();
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_LIGHTING);
+  glDisable(GL_DEPTH_TEST);
 
   // color bars
   for(i=0;i<3;i++){
@@ -366,11 +414,11 @@ int main(int argc,char* argv[]){
   //scanf("%d,%d,%d",&c[0],&c[1],&c[2]);
 
   glutInit(&argc,argv);
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(wsize+200,wsize);
-  glutInitWindowPosition(0,0);
-  glutCreateWindow(argv[0]);
-  glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+  glutInitWindowPosition((1080-wsize)/2,(800-wsize)/2);
+  glutCreateWindow("Eye");
+  //glPixelStorei(GL_UNPACK_ALIGNMENT,1);
   makeRasterFont();
 
   glutDisplayFunc(display);
@@ -379,6 +427,7 @@ int main(int argc,char* argv[]){
   glutSpecialFunc(keyboardSpecials);
   glutSpecialUpFunc(keyboardSpecialsUp);
 
+  init();
   makeEye();
   drawEye();
   glutMainLoop();
