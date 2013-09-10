@@ -7,8 +7,6 @@
 #include <GLUT/glut.h>
 #include "font.h"
 
-int angle=0;
-
 int wsize=600;
 int c[3];   // base eyecolor is (c[0],c[1],c[2]); default: random
 int pupil,white;  // radius of beginning and end of iris
@@ -17,11 +15,12 @@ int circular[600][6300][3];
 GLfloat square[1024][1024][3];
 int vbands[600][3],crypts[600][6300][3];
 int isLidded=0;
-GLfloat fourOnes[]={1.0,1.0,1.0,1.0},oneOne[]={0.0,0.0,1.0,0.0};
+GLfloat fourOnes[]={1.0,1.0,1.0,1.0},transparent[]={1.0,1.0,1.0,0.1};
 GLuint texture;
 GLUquadricObj* sphere=NULL;
 
-void v_band(){//int r,int mv,int dir){
+// adds bands of highly-varying color
+void v_band(){
   int r,i,j,k,inc;
   double theta;
   for(r=0;r<600;r++){
@@ -43,6 +42,7 @@ void v_band(){//int r,int mv,int dir){
   }
 }
 
+// adds dark spots
 void crypt(){
   int r,i,j,x,y;
   double theta;
@@ -63,11 +63,11 @@ void crypt(){
 	  }
 	}
       }
-
     }
   }
 }
 
+// sets the beginning color for each radial section
 void r_colors(int size){
   int r,i;
   pupil = (50 + rand()%20) /2;
@@ -75,7 +75,8 @@ void r_colors(int size){
   int start = ((white + pupil) / 2) /2;
   int chanceofvband = rand()%5;
 
-  for(r=0;r<pupil;r++) circular[r][0][0] = circular[r][0][1] = circular[r][0][2] = 0;  // inside pupil
+  for(r=0;r<pupil;r++) circular[r][0][0] = circular[r][0][1] = circular[r][0][2] = rand()%2;  // inside pupil
+
   circular[start][0][0] = c[0];
   circular[start][0][1] = c[1];
   circular[start][0][2] = c[2];
@@ -92,8 +93,6 @@ void r_colors(int size){
     else if(circular[r-1][0][2]<0) circular[r-1][0][2]=0;
     if(rand()%200<chanceofvband && r<white-5){    // random bands of high-variance colors
       for(i=0;i<3;i++) vbands[r][i]=circular[r][0][i]+rand()%100*pow(-1,rand()%2);
-      //v_band(r-1,50,-1);
-      //r-=5;
     }
   }
   for(r=start+1;r<white;r++){  // middle out
@@ -108,8 +107,6 @@ void r_colors(int size){
     else if(circular[r][0][2]<0) circular[r][0][2]=0;
     if(rand()%200<chanceofvband){    // random bands of high-variance colors
       for(i=0;i<3;i++) vbands[r][i]=circular[r][0][i]+rand()%100*pow(-1,rand()%2);
-      //v_band(r,50,1);
-      //r+=5;
     }
   }
 
@@ -118,19 +115,12 @@ void r_colors(int size){
   }
 }
 
+// sets the color for each position on the eye based on the base color for that radius
 void theta_colors(int size){
-  int r,/*brightness[2600],*/variance[2600][3],i=0,j=0;
+  int r,variance[2600][3],i=0,j=0;
   int chanceofstreak = rand()%15;
   int chanceofcrypt = rand()%15;
   double theta;
-
-  int sinamp = rand()%16 * pow(-1,rand()%2) + 10;
-  int sinshift = rand()%300;
-
-  /*for(theta=0;theta<2*M_PI;theta+=.005){  // set brightness for each angle, starting and ending with the same value
-    brightness[i] = sinamp*sin(i/200.0+sinshift);
-    i++;
-    }*/
 
   i = 0;
   for(theta=0;theta<2*M_PI;theta+=.005){  // add streaks
@@ -145,9 +135,9 @@ void theta_colors(int size){
   for(r=0;r<white;r++){  // color each ring with variance
     i = 0;
     for(theta=0;theta<2*M_PI;theta+=.005){
-      circular[r][i][0]=circular[r][0][0]+variance[i][0]/*+brightness[i]*/+pow(-1,rand()%2)*(rand()%10);
-      circular[r][i][1]=circular[r][0][1]+variance[i][1]/*+brightness[i]*/+pow(-1,rand()%2)*(rand()%10);
-      circular[r][i][2]=circular[r][0][2]+variance[i][2]/*+brightness[i]*/+pow(-1,rand()%2)*(rand()%10);
+      circular[r][i][0]=circular[r][0][0]+variance[i][0]+pow(-1,rand()%2)*(rand()%10);
+      circular[r][i][1]=circular[r][0][1]+variance[i][1]+pow(-1,rand()%2)*(rand()%10);
+      circular[r][i][2]=circular[r][0][2]+variance[i][2]+pow(-1,rand()%2)*(rand()%10);
       if(circular[r][i][0]<0) circular[r][i][0]=0;
       if(circular[r][i][0]>255) circular[r][i][0]=255;
       if(circular[r][i][1]<0) circular[r][i][1]=0;
@@ -216,11 +206,11 @@ void init(void){
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
   glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,600,600,0,GL_RGB,GL_FLOAT,square);
+  glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
 
   glEnable(GL_LIGHT0);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,fourOnes);
-  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,fourOnes);
-  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,50.0);
+  glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER,GL_TRUE);
+  //glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,GL_TRUE);
 
   sphere = gluNewQuadric();
   gluQuadricDrawStyle(sphere,GLU_FILL);
@@ -228,9 +218,8 @@ void init(void){
   gluQuadricNormals(sphere,GL_TRUE);
 }
 
-void circle_to_square(void){
-  int r,i,j,x,y;
-  double theta;
+void set_texture_and_light(void){
+  int i,x,y;
   int lidRadius = 2*white + rand()%40-20;
 
   for(x=0;x<1024;x++){
@@ -243,30 +232,16 @@ void circle_to_square(void){
     }
   }
 
-/*  for(r=0;r<wsize/2-10;r++){
-    i = 0;
-    for(theta=0;theta<2*M_PI;theta+=.0025){
-      x = wsize/2 + cos(theta)*r;
-      y = wsize/2 + sin(theta)*r;
-      if(!isLidded || (hypot(wsize/2-white-x,wsize/2-y)<lidRadius && hypot(wsize/2+white-x,wsize/2-y)<lidRadius)){
-	square[(x+512)%1024][y][0] = circular[r][i][0] / 255.0;
-	square[(x+512)%1024][y][1] = circular[r][i][1] / 255.0;
-	square[(x+512)%1024][y][2] = circular[r][i][2] / 255.0;
-
-	if(r>white){  // eliminate holes in sclera
-	  for(j=0;j<3;j++) square[x+1][y][j] = square[x][y+1][j] = square[x+1][y+1][j] = square[x][y][j];
-	}
-      }
-      //else square[x][y][0] = square[x][y][1] = square[x][y][2] = 0.0;
-
-      i++;
-      //printf("x=%d, y=%d; r=%d, theta=%f  =  (%f,%f,%f)\n",x,y,r,theta,square[x][y][0],square[x][y][1],square[x][y][2]);
-    }
-  }
-*/
-
   glBindTexture(GL_TEXTURE_2D,texture);
   glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,600,600,0,GL_RGB,GL_FLOAT,square);
+
+  // position light
+  float light_position[4];
+  for(i=0;i<2;i++) light_position[i]=rand()%wsize;
+  light_position[2] = 5*wsize;
+  light_position[3] = 0.0;
+  glLightfv(GL_LIGHT0,GL_POSITION,light_position);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,rand()%40+10.0);
 }
 
 void clear_matrices(){
@@ -292,7 +267,7 @@ void makeEye(void){
 }
 
 void drawEye(void){
-  circle_to_square();
+  set_texture_and_light();
   glutPostRedisplay();
 }
 
@@ -300,7 +275,7 @@ void reshape(int w,int h){
   glViewport(0,0,w,h);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(0,w,h,0,-wsize/2,wsize/2);
+  glOrtho(0,w,h,0,-wsize/2,wsize);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   glutPostRedisplay();
@@ -312,8 +287,8 @@ void keyboard(unsigned char key,int x,int y){
   case 27:  // ESC key
     exit(0);
     break;
-  case 'l':
-    /*case 'L':
+    /*case 'l':
+  case 'L':
     isLidded = !isLidded;
     drawEye();
     break;*/
@@ -364,20 +339,26 @@ void display(void){
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // eye
-  /*glRasterPos2i(0,wsize);
-    glDrawPixels(wsize,wsize,GL_RGB,GL_FLOAT,square);*/
   glEnable(GL_LIGHTING);
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_TEXTURE_2D);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,fourOnes);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,fourOnes);
   glBindTexture(GL_TEXTURE_2D,texture);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   glTranslatef(wsize/2,wsize/2,0);
-  //glRotatef(0.0,1.0,0.0,0.0);
   glRotatef(180.0,0.0,1.0,0.0);
   gluSphere(sphere,wsize/2-10,60,60);
-  glLoadIdentity();
   glDisable(GL_TEXTURE_2D);
+  /*glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,transparent);
+  glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,fourOnes);
+  glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,100.0);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+  glColor4f(1.0,1.0,1.0,0.1);
+  gluSphere(sphere,wsize/2-5,60,60);  // cornea*/
+  glLoadIdentity();
   glDisable(GL_LIGHTING);
   glDisable(GL_DEPTH_TEST);
 
@@ -394,6 +375,7 @@ void display(void){
     glRasterPos2i(offset+50*i,wsize-25);
     printString(value);
   }
+
   // current index indicator
   glColor3f(1,1,0);
   glBegin(GL_TRIANGLES);
@@ -410,15 +392,13 @@ int main(int argc,char* argv[]){
   srand(time(NULL));
 
   for(i=0;i<3;i++) c[i]=rand()%52 * 5; // random multiple of 5 from 0 to 255
-  //printf("Base eyecolor (r,g,b): ");
-  //scanf("%d,%d,%d",&c[0],&c[1],&c[2]);
 
   glutInit(&argc,argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(wsize+200,wsize);
   glutInitWindowPosition((1080-wsize)/2,(800-wsize)/2);
   glutCreateWindow("Eye");
-  //glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+  glPixelStorei(GL_UNPACK_ALIGNMENT,1);
   makeRasterFont();
 
   glutDisplayFunc(display);
